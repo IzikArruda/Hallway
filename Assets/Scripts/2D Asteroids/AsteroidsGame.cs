@@ -222,7 +222,6 @@ public class AsteroidsGame : MonoBehaviour {
      * PausedAsteroid: The player left the game and did not finish it
      * Transmission: The player destroyed all the asteroids and will recieve a transmission */
     int gameState = (int) State.Inactive;
-    bool playerLinked = false;
     enum State {
         Inactive,
         AsteroidStage,
@@ -576,11 +575,8 @@ public class AsteroidsGame : MonoBehaviour {
         Vector3 yTranslation = transform.TransformPoint(staticBox.gameObject.transform.localPosition + new Vector3(0, 1, 0)) - worldPosition;
         Vector3 width = xTranslation*currentStaticBoxWidth;
         Vector3 height = yTranslation*currentStaticBoxHeight;
-        Vector3 leftX = staticBox.transform.position - width/2;
-        Vector3 bottomY = staticBox.transform.position - height/2;
         Vector3 start = staticBox.transform.position - width/2 - height/2;
         Vector3 newPoint;
-        float normalizedTime = currentTransAnimTime / transTextStateTimings[currentTransAnimState];
         float lineCount;
 
 
@@ -1164,7 +1160,6 @@ public class AsteroidsGame : MonoBehaviour {
          * Update all the free scoreGain objects by counting down their lifetime until they are removed.
          * They also move along the Y axis and will be deleted if they reach past the screen
          */
-        float characterHeight = textSize*2;
 
         foreach(scoreGain s in freeScoreGains) {
             s.y += s.dy *60*Time.deltaTime;
@@ -1240,10 +1235,6 @@ public class AsteroidsGame : MonoBehaviour {
             staticBox.transform.localPosition = new Vector3(currentStaticBoxLeft + currentStaticBoxWidth/2, currentStaticBoxBottom + currentStaticBoxHeight/2, -layerSize*2);
             CreateBoxMesh(staticBox, currentStaticBoxHeight/2, -currentStaticBoxHeight/2, -currentStaticBoxWidth/2, currentStaticBoxWidth/2, 0);
 
-            /* Position the staticLabel now that the staticWindow is done animating */
-            float labelWidth = staticLabelWidth + staticLabelSpacing*2;
-            float labelHeight = staticLabelHeight + staticLabelSpacing*2;
-            float labelX = currentStaticBoxLeft + currentStaticBoxWidth;
             /* Have the static box label start from the top right corner of the static box */
             staticLabel.transform.localPosition = new Vector3(currentStaticBoxLeft + currentStaticBoxWidth + staticLabelSpacing, transBoxTop + staticLabelSpacing + staticLabelSpacing, -layerSize*2);
         }
@@ -2370,7 +2361,7 @@ public class AsteroidsGame : MonoBehaviour {
         /*
          * Runs when a player gets linked to the game and sending inputs
          */
-        playerLinked = true;
+
     }
 
     public bool UnlinkPlayer() {
@@ -2389,7 +2380,6 @@ public class AsteroidsGame : MonoBehaviour {
         /* Unlink the player and set their inputs to neutral */
         else {
             unlinked = true;
-            playerLinked = false;
             up = 0;
             down = 0;
             left = 0;
