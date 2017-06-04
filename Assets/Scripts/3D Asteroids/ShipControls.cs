@@ -12,7 +12,7 @@ public class ShipControls : MonoBehaviour {
     /* How the ship will handle Move and Rotate.
      * 0: Move will go forward and back using W/S, Rotate will rotate around Up using A/D
      * 1: Move will go forward/back and side to side using WASD. Rotate around Up and Left with mouseX/mouseY */
-    public int controlState = 0;
+    public int controlState = 1;
     
 
     public void Update() {

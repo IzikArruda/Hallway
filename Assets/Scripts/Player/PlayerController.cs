@@ -16,14 +16,16 @@ public class PlayerController : MonoBehaviour {
     public float sliding;
     public float movementSpeed;
     public float runSpeedMultiplier;
-    public float jumpSpeed;
     public float gravity;
     public float interactReach;
 
     /* Hidden values used for player movement */
-    private Vector3 moveDirection = Vector3.zero;
+    private Vector3 inputVector = Vector3.zero;
+    private Vector3 gravityVector = Vector3.zero;
+    private float gravityMaxVelocity = 5;
     private float yVelocity;
     private float yRotation = 0;
+    private float xRotation = 0;
 
     /* The state the player is in */
     private Enums.PlayerStates state;
@@ -31,11 +33,7 @@ public class PlayerController : MonoBehaviour {
 
     /* Saved values used when handling camera movements through interactables. */
     public Transform camCurrentTransform;
-    //public Vector3 startingPosition;
-    //public Vector3 startingAngle;
     public Transform camDestinationTransform;
-    //public Vector3 destinationPosition;
-    //public Vector3 destinationAngle;
     public Enums.PlayerStates destinationState;
     public float camLERPTime;
     
@@ -108,54 +106,81 @@ public class PlayerController : MonoBehaviour {
     void PlayerMovement() {
         /*
          * Handle the displacement of the player character in the world through the WASD keys and gravity.
+         * Movement is calculated by adding together the inputVector and the gravityVector.
          */
         CharacterController playerController = GetComponent<CharacterController>();
 
         /* Use two input types for each axis to allow more control on player movement */
-        moveDirection = new Vector3((1-sliding)*Input.GetAxisRaw("Horizontal") + sliding*Input.GetAxis("Horizontal"),
+        inputVector = new Vector3((1-sliding)*Input.GetAxisRaw("Horizontal") + sliding*Input.GetAxis("Horizontal"),
                 0, (1-sliding)*Input.GetAxisRaw("Vertical") + sliding*Input.GetAxis("Vertical"));
-
+        
         /* Keep the movement's maginitude from going above 1 */
-        if(moveDirection.magnitude > 1) {
-            moveDirection.Normalize();
+        if(inputVector.magnitude > 1) {
+            inputVector.Normalize();
         }
 
         /* Add the player speed to the movement vector */
         if(Input.GetKey(KeyCode.LeftShift)) {
-            moveDirection *= movementSpeed*runSpeedMultiplier;
+            inputVector *= movementSpeed*runSpeedMultiplier;
         }else {
-            moveDirection *= movementSpeed;
+            inputVector *= movementSpeed;
+        }
+        
+        /* Rotate the input direction to match the player's view (only use the Y angle of the camera) */
+        Transform cameraYAngle = restingCameraTransform.transform;
+        cameraYAngle.localEulerAngles = new Vector3(0, cameraYAngle.localEulerAngles.y, 0);
+        inputVector = cameraYAngle.rotation*inputVector;
+
+
+        /* Calculate the gravity velocity to apply to the player and add it to the movement vector.
+         * The current angle of the player model's rotation will alter where gravity is applying force. */
+        //For now, handle gravity with two different cases: if there is no rotation in X or Z meaning the player
+        //is on  flat ground, and if not, they are not on flat ground so dont use gravity.
+        bool normalGravity = true;
+        if(transform.eulerAngles.x != 0 || transform.localEulerAngles.z != 0) {
+            normalGravity = false;
         }
 
-        /* Rotate the movement direction to match the direction the player is facing */
-        moveDirection = transform.TransformDirection(moveDirection);
-        
-        /* Calculate the gravity velocity to apply to the player and add it to the movement vector */
-        if(playerController.isGrounded) {
-            yVelocity = 0;
+        /* Normal gravity uses the playerController to determine if the player is grounded */
+        if(normalGravity) {
+            if(!playerController.isGrounded) {
+                gravityVector += gravity * Time.deltaTime * (transform.rotation * Vector3.down);
+            }
         }
+        /* Modified gravity does nothing so far. So far this will only be used in the ship.
+         * Possible idea is to "lock" the player to the ground using a collision box at their feet. */
         else {
-            yVelocity -= gravity*Time.deltaTime;
+            gravityVector = Vector3.zero;
         }
-        moveDirection.y = yVelocity;
+        Debug.Log(normalGravity);
+
+        /* Prevent the gravity vector from becoming too large */
+        if(gravityVector.magnitude > gravityMaxVelocity) {
+            gravityVector = gravityVector.normalized*gravityVector.magnitude;
+        }
+
 
         /* Apply the movement to the player character */
-        playerController.Move(moveDirection * Time.deltaTime);
+        playerController.Move((inputVector + gravityVector) * Time.deltaTime*60);
     }
 
     void CameraMovement() {
         /* 
-         * Handle mouse movement to change the camera's viewing angle and the player's forward vector
+         * Handle mouse movement to change the camera's viewing angle and the player's forward vector.
          */
 
-        /* Rotate the player character for any X mouse movement */
-        transform.rotation *= Quaternion.Euler(0, Input.GetAxis("Mouse X"), 0);
+        /* Rotate the camera's resting position for any X mouse movement */
+        xRotation -= Input.GetAxis("Mouse X");
+        if(xRotation < 0) { xRotation += 360; }
+        else if(xRotation > 360) { xRotation -= 360; }
 
         /* Rotate the camera's resting position for any Y mouse movement */
-        float mouseY = Input.GetAxis("Mouse Y");
-        yRotation = Mathf.Clamp(yRotation + mouseY, -75, 75);
-        restingCameraTransform.transform.rotation = Quaternion.Euler(-yRotation, restingCameraTransform.transform.eulerAngles.y, restingCameraTransform.transform.eulerAngles.z);
+        yRotation += Input.GetAxis("Mouse Y");
+        yRotation = Mathf.Clamp(yRotation, -75, 75);
 
+        /* Apply the rotation to the camera's resting position */
+        restingCameraTransform.transform.localEulerAngles = new Vector3(-yRotation, -xRotation, 0);
+        
         /* Update the camera's position with the new restingCamera transform */
         playerCamera.rotation = restingCameraTransform.transform.rotation;
     }
