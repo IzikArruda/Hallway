@@ -1,6 +1,16 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+
+
+
+//MAKE A CUSTOM CHARACTER CONTROLLER FOR THE PLAYER
+
+//Step 1: use user input to move the player that given direction. Once at that position, move the player up
+//a set amount and check if there is a floor to lock onto. This will require a "max step distance" value
+
+
+
 /*
  * Handle any inputs and movement to be done with the player and their camera
  */
@@ -10,6 +20,9 @@ public class PlayerController : MonoBehaviour {
     public Transform restingCameraTransform;
     /* The camera used for the player's main view */
     public Transform playerCamera;
+
+    /* The capsule Collider used at the base of the player model to determine if there is floor bellow */
+    public FootingDetection footingCollider;
 
     /* Player stats that adjust how they control */
     [Range(1, 0)]
@@ -70,7 +83,8 @@ public class PlayerController : MonoBehaviour {
 
         /* The player is free to control their character */
         if(state == Enums.PlayerStates.Control) {
-            PlayerMovement();
+            //PlayerMovement();
+            newPlayerMovement();
             CameraMovement();
             PlayerInteract();
         }
@@ -83,7 +97,7 @@ public class PlayerController : MonoBehaviour {
             overriddenScript.HandleInputs(inputs);
         }
     }
-
+    
 
     /* -------------- Per-Frame Update Functions ---------------------------------------------- */
     
@@ -107,6 +121,8 @@ public class PlayerController : MonoBehaviour {
         /*
          * Handle the displacement of the player character in the world through the WASD keys and gravity.
          * Movement is calculated by adding together the inputVector and the gravityVector.
+         * 
+         * This playerMovement command uses the playerController to move
          */
         CharacterController playerController = GetComponent<CharacterController>();
 
@@ -164,6 +180,68 @@ public class PlayerController : MonoBehaviour {
         playerController.Move((inputVector + gravityVector) * Time.deltaTime*60);
     }
 
+    void newPlayerMovement() {
+        /*
+         * A new playerMovement function.
+         */
+
+        /* Get the player's horizontal viewing angle to properly rotate the input vector */
+        Transform cameraYAngle = restingCameraTransform.transform;
+        cameraYAngle.localEulerAngles = new Vector3(0, cameraYAngle.localEulerAngles.y, 0);
+        
+        /* Use two input types for each axis to allow more control on player movement */
+        inputVector = new Vector3((1-sliding)*Input.GetAxisRaw("Horizontal") + sliding*Input.GetAxis("Horizontal"),
+                0, (1-sliding)*Input.GetAxisRaw("Vertical") + sliding*Input.GetAxis("Vertical"));
+
+        /* Keep the movement's maginitude from going above 1 */
+        if(inputVector.magnitude > 1) {
+            inputVector.Normalize();
+        }
+
+        /* Add the player speed to the movement vector */
+        if(Input.GetKey(KeyCode.LeftShift)) {
+            inputVector *= movementSpeed*runSpeedMultiplier;
+        }
+        else {
+            inputVector *= movementSpeed;
+        }
+
+        /* Rotate the input direction to match the player's view */
+        inputVector = cameraYAngle.rotation*inputVector;
+        
+        /* Get the "Up" vector from the player's current rotation */
+        Vector3 upVector = cameraYAngle.rotation*Vector3.up;
+
+        /* Calculate gravity to the player if the footing is not on an object */
+        Vector3 gravityVector;
+        if(footingCollider.insideCount == 0) {
+            gravityVector = -upVector/10f;
+        }
+        else {
+            gravityVector = Vector3.zero;
+        }
+
+        /* Apply all the movements that the player will undergo */
+        //inputVector = new Vector3(0.03f, 0, 0); AUTOMOVE THE PLAYER
+        transform.GetComponent<Rigidbody>().velocity = Vector3.zero;
+        transform.position += (inputVector + gravityVector);
+        
+        /* Push the player downward to keep them touching the ground */
+        //transform.position += new Vector3(0, 0.003f, 0);
+
+        
+
+        //////////////GOING UP STAIRS IS FINE THE WAY IT IS - WE ONLY NEED A FIX FOR GFOING DOWN STAIRS
+        //////////////THAT MEANS USING A RAY TRACE TO CALCULATE IF THE PLAYER WILL FALL A CERTAIN AMOUNT DOWN A STAIRS 
+        //////////////OR A SLOPE IS PERFECT - GOING DOWN A SLOPE OR A STAIR WILL RUN A SPECIFIC COMMAND
+        //////////////THAT WILL PUSH THE PLAYER DOWNWARD.
+        //////////////USE RAYTRACE TO DETECT IF THE PLAYER HAS MOVED AND THE RAYTRACE DISTANCE IS LARGER THAN BEFORE THE MOVEMENT
+        ////THIS WIL LTRIGGER WHEN GOING DOWN STAIRS, BUT MIGHT ALSO TRIGGER WHEN GOING UP STRAIGHT STAIRS.
+        ////WHAT I HOPE TO HAPPEN IS THAT THE FORCE APPLIED WHEN ON THE STRAIGHT STAIRS WILL NOT PUSH THE PLAYER 
+        ////OUT OF THEIR CURRENT POSITION.
+        ////BUT FOR NOW, THIS IS THE BEST IMPLEMENTATION
+    }
+
     void CameraMovement() {
         /* 
          * Handle mouse movement to change the camera's viewing angle and the player's forward vector.
@@ -181,8 +259,10 @@ public class PlayerController : MonoBehaviour {
         /* Apply the rotation to the camera's resting position */
         restingCameraTransform.transform.localEulerAngles = new Vector3(-yRotation, -xRotation, 0);
         
+
         /* Update the camera's position with the new restingCamera transform */
         playerCamera.rotation = restingCameraTransform.transform.rotation;
+        
     }
 
     void PlayerInteract() {
