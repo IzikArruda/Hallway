@@ -7,7 +7,7 @@ using System.Collections;
 public class Interactable : MonoBehaviour {
     
 
-    public virtual void Activated(PlayerController player) {
+    public virtual void Activated(CustomPlayerController player) {
         /*
          * Runs when the player activates an object
          */

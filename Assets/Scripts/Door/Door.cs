@@ -9,7 +9,7 @@ public class Door : Interactable {
     public DoorController linkedController;
 	
 
-    public override void Activated(PlayerController player) {
+    public override void Activated(CustomPlayerController player) {
         /* 
          * When activated by the player, the door will check what side the player is on and send a signal
          * to it's door controller to open all linked doors away from the player, if they need to be opened.

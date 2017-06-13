@@ -15,9 +15,9 @@ public class AsteroidsInteractable : Interactable {
     public AsteroidsGame asteroidsGame;
 
     /* linked player that is interacting with the object */
-    private PlayerController playerLink = null;
+    private CustomPlayerController playerLink = null;
 
-	public override void Activated(PlayerController player) {
+	public override void Activated(CustomPlayerController player) {
         /*
          * When the player interacts with the canvas, send a request to take control of the player's inputs
          */
@@ -36,7 +36,7 @@ public class AsteroidsInteractable : Interactable {
          */
 
         /* Check if a right click has sucessfully unlocked the player from the asteroids game */
-        if(playerInputs.rightMouseButton == true && asteroidsGame.UnlinkPlayer() == true) {
+        if(playerInputs.rightMouseButtonPressed == true && asteroidsGame.UnlinkPlayer() == true) {
             if(playerLink.ReturnControlRequest() == true) {
                 playerLink = null;
             }

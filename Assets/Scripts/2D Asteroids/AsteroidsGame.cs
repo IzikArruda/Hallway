@@ -182,8 +182,6 @@ public class AsteroidsGame : MonoBehaviour {
     int down = 0;
     int left = 0;
     int right = 0;
-    //0 = ready to fire. 1 = firing shot. 2 = holding firing button, wont fire
-    int firePhoton = 0;
 
 
     /* ---------- Container/Tracker ArrayLists/Variables  ------------------------------------------------- */
@@ -863,7 +861,7 @@ public class AsteroidsGame : MonoBehaviour {
          */
         bool unPause = false;
 
-        if(firePhoton == 1 || left == 1 || right == 1 || up == 1 || down == 1) {
+        if(left == 1 || right == 1 || up == 1 || down == 1) {
             unPause = true;
         }
 
@@ -2343,17 +2341,8 @@ public class AsteroidsGame : MonoBehaviour {
         if(inputs.playerMovementYRaw != -1) { down = 0; } else { down = 1; }
 
         /* Ensure the player has to tap the left-mouse button/sapcebar to fire a photon shot */
-        if(inputs.leftMouseButton == true || inputs.spaceBar == true) {
-            if(firePhoton == 0) {
-                InitPhoton();
-                firePhoton = 1;
-            }
-            else if(firePhoton == 1) {
-                firePhoton = 2;
-            }
-        }
-        else {
-            firePhoton = 0;
+        if(inputs.leftMouseButtonPressed == true || inputs.spaceBarPressed == true) {
+            InitPhoton();
         }
     }
 
@@ -2384,7 +2373,6 @@ public class AsteroidsGame : MonoBehaviour {
             down = 0;
             left = 0;
             right = 0;
-            firePhoton = 0;
             
             /* Set the game to inactive if they have not yet finished the asteroids game */
             if(gameState != (int) State.Finished) {

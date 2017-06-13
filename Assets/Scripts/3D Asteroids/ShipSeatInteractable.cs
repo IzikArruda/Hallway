@@ -1,6 +1,10 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+/*
+ * Connects the player to the shipControls. This will allow the player to send 
+ * their inputs to the shipControls.
+ */
 public class ShipSeatInteractable : Interactable {
 
     /* The ship Object that the interactable is controlling */
@@ -13,12 +17,12 @@ public class ShipSeatInteractable : Interactable {
     public ShipControls shipControls;
 
     /* linked player that is interacting with the interactable */
-    public PlayerController playerLink = null;
+    public CustomPlayerController playerLink = null;
 
     /* A link to the player if they are present inside the ship */
-    public PlayerController PlayerInShip;
+    public CustomPlayerController PlayerInShip;
 
-    public override void Activated(PlayerController player) {
+    public override void Activated(CustomPlayerController player) {
         /*
          * When the player interacts with the canvas, send a request to take control of the player's inputs
          */
@@ -35,8 +39,8 @@ public class ShipSeatInteractable : Interactable {
          * Right click will send a request to unlock the player from the interactable.
          */
 
-        /* Check if a right click has succesfully unlocked the player from the interactable */
-        if(playerInputs.rightMouseButton == true) {
+        /* Check if a right click press has succesfully unlocked the player from the interactable */
+        if(playerInputs.rightMouseButtonPressed == true) {
             if(playerLink.ReturnControlRequest() == true) {
                 playerLink = null;
             }

@@ -10,11 +10,31 @@ public class UserInputs {
     public float playerMovementY;
     public float playerMovementXRaw;
     public float playerMovementYRaw;
-    public bool leftMouseButton;
-    public bool rightMouseButton;
     public float mouseX;
     public float mouseY;
-    public bool spaceBar;
+    public bool leftMouseButtonPressed;
+    public bool leftMouseButtonHeld;
+    public bool rightMouseButtonPressed;
+    public bool rightMouseButtonHeld;
+    public bool spaceBarPressed;
+    public bool spaceBarHeld;
 
-    //public float Time.deltaTime
+    public void UpdateInputs() {
+        /*
+         * Update the input values of the player for this frame
+         */
+
+        playerMovementX = Input.GetAxis("Horizontal");
+        playerMovementY = Input.GetAxis("Vertical");
+        playerMovementXRaw = Input.GetAxisRaw("Horizontal");
+        playerMovementYRaw = Input.GetAxisRaw("Vertical");
+        mouseX = Input.GetAxis("Mouse X");
+        mouseY = Input.GetAxis("Mouse Y");
+        leftMouseButtonPressed = Input.GetMouseButtonDown(0);
+        leftMouseButtonHeld = Input.GetMouseButton(0);
+        rightMouseButtonPressed = Input.GetMouseButtonDown(1);
+        rightMouseButtonHeld = Input.GetMouseButton(1);
+        spaceBarPressed = Input.GetKeyDown("space");
+        spaceBarHeld = Input.GetKey("space");
+    }
 }
