@@ -25,6 +25,10 @@ public class ShipObject : MonoBehaviour {
     /* Ship's velocity */
     [HideInInspector]
     public Vector3 velocity = new Vector3(0, 0, 0);
+    public float maxSpeed;
+
+    /* Particle system used to represent the ship's velocity vector */
+    public ParticleSystem velocityVectorParticles;
 
 
     /* ------------ Built-in Unity Functions ------------------------------------------------------------ */
@@ -46,6 +50,9 @@ public class ShipObject : MonoBehaviour {
 
         /* Move the ship and it's contents by it's current velocity */
         UpdatePosition();
+
+        /* Properly place the vector dust particle system to reflect the ship's velocity */
+        UpdateVelocityDust();
     }
 
 
@@ -64,6 +71,36 @@ public class ShipObject : MonoBehaviour {
         shipControls.linkedShipInteractable.AdjustPlayerAfterShipMove(velocity);
     }
 
+    public void UpdateVelocityDust() {
+        /*
+         * Update the ship's dust velocity particle system to reflect the direction and magnitude of the ship's velocity
+         */
+        float minDustSpeedLimit = maxSpeed / 4f;
+
+        /* Set the speed of the particles. The particle speed is based on the ship's speed */
+        float particleBaseSpeed = 800*velocity.magnitude;
+        velocityVectorParticles.startSpeed = -particleBaseSpeed;
+        
+
+        /* Set the emission rate for the velocity dust particles */
+        var particleEmission = velocityVectorParticles.emission;
+        if(velocity.magnitude < minDustSpeedLimit) {
+            /* If the ship travels too slowly, stop producing particles */
+            particleEmission.rate = 0;
+        }
+        else {
+            /* The amount of particles produced is relative to the ship's speed */
+            particleEmission.rate = (velocity.magnitude - minDustSpeedLimit)*particleBaseSpeed*4;
+        }
+
+
+        /* Place the system half the bounds length from the ship's center in the velocity's direction */
+        if(velocity.magnitude != 0) {
+            velocityVectorParticles.transform.rotation = Quaternion.LookRotation(velocity.normalized);
+            velocityVectorParticles.transform.position = transform.position + velocity.normalized*(particleBaseSpeed*velocityVectorParticles.startLifetime)/2f;
+        }
+    }
+
 
     /* --------- Event Functions ------------------------------------------------------------------- */
 
@@ -73,8 +110,7 @@ public class ShipObject : MonoBehaviour {
          * Use the given direction vector to add to the ship's current velocity. The magnitude
          * of the given vector effects how much velocity will be added.
          */
-        float maxSpeed = 0.25f;
-         
+
         velocity += velocityIncrease*0.005f;
 
         /* Prevent the velocity from going above the limit */
@@ -106,7 +142,6 @@ public class ShipObject : MonoBehaviour {
 
         IncreaseVelocity(transform.rotation*Vector3.left*leftVelocity);
     }
-
 
 
 

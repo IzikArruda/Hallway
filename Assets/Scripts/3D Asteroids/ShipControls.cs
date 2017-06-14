@@ -23,6 +23,8 @@ public class ShipControls : MonoBehaviour {
         
     }
 
+
+
     public void ConvertInputs(UserInputs inputs) {
         /*
          * Send commands to the linked ship object using user input.
