@@ -19,10 +19,6 @@ public class ShipControls : MonoBehaviour {
     public int controlState = 1;
     
 
-    public void Update() {
-        
-    }
-
 
 
     public void ConvertInputs(UserInputs inputs) {
@@ -46,7 +42,10 @@ public class ShipControls : MonoBehaviour {
             controlledShip.IncreaseForwardVelocity(inputs.playerMovementYRaw);
             
             /* Rotate the ship */
-            linkedShipInteractable.ship.Yaw(inputs.playerMovementXRaw);
+            linkedShipInteractable.ship.IncreaseYawVelocity(inputs.playerMovementXRaw);
+
+            /* Rotate the camera when moving the mouse */
+            RotateCamera(inputs.mouseX, inputs.mouseY);
         }
         else if(controlState == 1) {
             /* Apply a velocity change to the ship */
@@ -54,8 +53,34 @@ public class ShipControls : MonoBehaviour {
             controlledShip.IncreaseLeftVelocity(inputs.playerMovementXRaw);
 
             /* Rotate the ship */
-            linkedShipInteractable.ship.Yaw(inputs.mouseX);
-            linkedShipInteractable.ship.Pitch(inputs.mouseY);
+            linkedShipInteractable.ship.IncreaseYawVelocity(inputs.mouseX);
+            linkedShipInteractable.ship.IncreasePitchVelocity(inputs.mouseY);
         }
+    }
+
+    
+    public void RotateCamera(float x, float y) {
+        /*
+         * Rotate the camera's resting transform by the given amount. Prevent the transform from flipping upside down.
+         */
+        Vector3 newViewingAngle = linkedShipInteractable.viewingTransform.localEulerAngles;
+        float xRotAngleMax = 60;
+
+        /* Add the mouse movement to the viewing angle and clamp the x angle to be within [0+xRotAngleMax, 360-xRotAngleMax]*/
+        newViewingAngle += new Vector3(-y, x, 0);
+        if(newViewingAngle.x <= 180 && newViewingAngle.x > xRotAngleMax) {
+            newViewingAngle.x = xRotAngleMax;
+        }else if(newViewingAngle.x > 180 && newViewingAngle.x < 360-xRotAngleMax) {
+            newViewingAngle.x = 360-xRotAngleMax;
+        }
+
+        /* The viewing angle should never have a z value thats not 0 */
+        newViewingAngle.z = 0;
+
+        /* Set the new viewing angle */
+        linkedShipInteractable.viewingTransform.localEulerAngles = newViewingAngle;
+
+        /* Update the PlayerController to reflect the change in the transform */
+        linkedShipInteractable.CameraTransformUpdated();
     }
 }

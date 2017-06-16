@@ -12,6 +12,9 @@ public class ShipSeatInteractable : Interactable {
 
     /* The position and angle the camera will be in when the player is interacting with the interactable */
     public Transform viewingTransform;
+    /* The relative position and the angle the camera will start in when interacting with the ship */
+    private Vector3 startingPosition;
+    private Vector3 startingAngle;
 
     /* The controls that are linked to this ship seat */
     public ShipControls shipControls;
@@ -22,6 +25,14 @@ public class ShipSeatInteractable : Interactable {
     /* A link to the player if they are present inside the ship */
     public CustomPlayerController PlayerInShip;
 
+
+    public void Start() {
+
+        /* Set the starting position and angle of the viewingTransform so it can be reset when the player links themselves */
+        startingPosition = viewingTransform.localPosition;
+        startingAngle = viewingTransform.localEulerAngles;
+    }
+
     public override void Activated(CustomPlayerController player) {
         /*
          * When the player interacts with the canvas, send a request to take control of the player's inputs
@@ -29,6 +40,7 @@ public class ShipSeatInteractable : Interactable {
         Debug.Log("Player activated the asteroids canvas");
 
         if(player.ControlOverrideRequest(this, viewingTransform, Enums.PlayerStates.Overridden)) {
+            ResetViewingTransform();
             playerLink = player;
         }
     }
@@ -53,6 +65,31 @@ public class ShipSeatInteractable : Interactable {
     }
     
 
+    public void CameraTransformUpdated() {
+        /*
+         * The camera's resting transform has been updated, so apply the update to the player's camera
+         */
+
+         if(playerLink != null) {
+            playerLink.RepositionCamera();
+        }
+    }
+
+    public void ResetViewingTransform() {
+        /*
+         * Reset the viewingTransform for the camera's resting position. This  should be called each time a
+         * player interacts/links themselves to this script to ensure proper camera placement.
+         */
+
+        viewingTransform.localPosition = startingPosition;
+        viewingTransform.localEulerAngles = startingAngle;
+    }
+
+
+
+
+
+
     public void AdjustPlayerAfterShipMove(Vector3 shipMovementVector) {
         /*
          * Run anytime the ship moves. Keeps the player's position relative to the ship.
@@ -62,7 +99,7 @@ public class ShipSeatInteractable : Interactable {
             PlayerInShip.transform.position += shipMovementVector;
         }
     }
-
+    
     public void AdjustPlayerAfterShipYaw(Vector3 point, float yawAmount) {
         /*
          * Run anytime the ship undergoes yaw rotation around the given point. 
@@ -82,6 +119,17 @@ public class ShipSeatInteractable : Interactable {
 
         if(PlayerInShip != null) {
             PlayerInShip.transform.RotateAround(point, Vector3.left, pitchAmount);
+        }
+    }
+
+    public void AdjustPlayerAfterShipRotation(Vector3 point, Vector3 rotation) {
+        /*
+         * Runs anytime the ship undergoes a rotation. Keeps the player
+         * in their relative position in the ship when it rotates.
+         */
+
+        if(PlayerInShip != null) {
+            PlayerInShip.transform.RotateAround(point, Vector3.left, rotation.x);
         }
     }
 }

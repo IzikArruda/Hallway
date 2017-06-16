@@ -144,6 +144,7 @@ public class CustomPlayerController : MonoBehaviour {
         else if(state == Enums.PlayerStates.Overridden) {
             overriddenScript.HandleInputs(inputs);
         }
+
     }
 
 
@@ -387,7 +388,7 @@ public class CustomPlayerController : MonoBehaviour {
         playerCamera.transform.position = currentCameraTransform.position;
     }
 
-
+    
     /* ----------- Event Functions ------------------------------------------------------------- */
 
     void LegCollisionTest(Vector3 position, Vector3 direction, float length, int index) {
@@ -423,9 +424,17 @@ public class CustomPlayerController : MonoBehaviour {
         }
     }
 
+    public void RepositionCamera() {
+        /*
+         * Reposition the player camera to the current camTransform in the case it has moved
+         */
+
+        playerCamera.transform.position = camDestinationTransform.position;
+        playerCamera.transform.rotation = camDestinationTransform.rotation;
+    }
 
     /* ------------- Interact Functions -------------------------------------------------------------- */
-    
+
     void PlayerInteract() {
         /*
          * Handle player inputs to catch when the player wants to interact with an object.
