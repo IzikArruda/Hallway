@@ -11,17 +11,6 @@ public class ShipWeaponSystem : MonoBehaviour {
     /* All weapons linked to this weapon system */
     public ShipWeapon[] linkedWeapons;
 	
-
-    public void Update() {
-        /*
-         * Reduce the cooldowns on each linked weapon
-         */
-
-        /* Reduce the weapon's cooldowns */
-        for(int i = 0; i < linkedWeapons.Length; i++) {
-            linkedWeapons[i].ReduceCooldown(Time.deltaTime);
-        }
-    }
 	
     public void Fire() {
         /*

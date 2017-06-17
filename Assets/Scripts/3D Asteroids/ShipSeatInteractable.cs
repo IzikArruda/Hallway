@@ -36,7 +36,7 @@ public class ShipSeatInteractable : Interactable {
     }
     
 
-    /* -------- Inherited Interactable ------------------------------------------------------- */
+    /* -------- Inherited Interactable Functions ------------------------------------------------------- */
 
     public override void Activated(CustomPlayerController player) {
         /*

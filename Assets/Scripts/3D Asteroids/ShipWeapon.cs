@@ -6,8 +6,16 @@ using System.Collections;
  */
 public class ShipWeapon : MonoBehaviour {
 
-    public float maxCooldown;
+    [HideInInspector]
     public float currentCooldown;
+    public float maxCooldown;
+
+    public virtual void Update() {
+        /*
+         * A per-frame update function is required for each weapon to reduce cooldowns and other functions.
+         */
+        Debug.Log("WARNING: WEAPON DOES NOT HAVE AN UPDATE METHOD");
+    }
 
     public virtual void FireWeaponRequest() {
         /*

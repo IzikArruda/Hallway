@@ -125,8 +125,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1871d0a4674d6724780e6f32303f7a18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxCooldown: 1
   currentCooldown: 0
+  maxCooldown: 0.5
+  laserCurrentPower: 0
+  laserMaxPower: 10
+  fireWeaponPower: 400
+  dissipatePower: 40
+  laserMaxLength: 800
+  laserMaxWidth: 0.5
+  currentActiveTime: 0
+  maxActiveTime: 0.05
 --- !u!23 &99458211
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -775,8 +783,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1871d0a4674d6724780e6f32303f7a18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxCooldown: 1
   currentCooldown: 0
+  maxCooldown: 0.5
+  laserCurrentPower: 0
+  laserMaxPower: 10
+  fireWeaponPower: 400
+  dissipatePower: 40
+  laserMaxLength: 800
+  laserMaxWidth: 0.5
+  currentActiveTime: 0
+  maxActiveTime: 0.05
 --- !u!23 &1029222244
 MeshRenderer:
   m_ObjectHideFlags: 0
