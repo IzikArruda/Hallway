@@ -30,6 +30,9 @@ public class ShipObject : MonoBehaviour {
     /* Particle system used to represent the ship's velocity vector */
     public ParticleSystem velocityVectorParticles;
     
+    /* Weapon system and it's linked  weapons */
+    public ShipWeaponSystem weaponSystem;
+
     /* 
      * Stats that define how the ship controls 
      */
@@ -112,7 +115,6 @@ public class ShipObject : MonoBehaviour {
         
         /* Reduce the rotation velocity every frame */
         rotationDragTotal = rotationDragSetAmount*Mathf.Sign(yawVelocity) + rotationDragPercentage*yawVelocity;
-        float yawReduction = yawVelocity*0.99f;
         if(rotationDragTotal < Mathf.Abs(yawVelocity)) {
             yawVelocity -= rotationDragTotal;
         }else {
@@ -186,15 +188,6 @@ public class ShipObject : MonoBehaviour {
             velocityVectorParticles.transform.position = transform.position + velocity.normalized*(particleBaseSpeed*velocityVectorParticles.startLifetime)/2f;
         }
     }
-
-
-    /* --------- Event Functions ------------------------------------------------------------------- */
-
-
-
-
-
-
 
 
     /* ---------- Ship Controls Functions ---------------------------------------------------------- */
@@ -299,11 +292,12 @@ public class ShipObject : MonoBehaviour {
 
         return addedVel;
     }
-
     
     public void FireGuns() {
         /*
-         * Generic "fire weapon" function
+         * Send a request to the ship's weapon system to fire the linked weapons
          */
+
+        weaponSystem.Fire();
     }
 }

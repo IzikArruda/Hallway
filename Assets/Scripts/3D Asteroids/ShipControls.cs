@@ -12,22 +12,27 @@ public class ShipControls : MonoBehaviour {
 
     /* The ship this script is in control of */
     public ShipObject controlledShip;
+    
 
     /* How the ship will handle Move and Rotate.
      * 0: Move will go forward and back using W/S, Rotate will rotate around Up using A/D. 2D asteroids
      * 1: Move will go forward/back and side to side using WASD. Rotate around Up and Left with mouseX/mouseY */
     public int controlState = 1;
+
+
+    /* -------- Input Handling Functions ------------------------------------------------------- */
     
-
-
-
-    public void ConvertInputs(UserInputs inputs) {
+    public void HandleInputs(UserInputs inputs) {
         /*
          * Send commands to the linked ship object using user input.
+         * The player calls this with their current inputs for the frame.
          */
-         
+
         /* Handle any user inputs that will apply a movement or rotation to the ship */
         HandleMovementInputs(inputs);
+
+        /* Handle any inputs that will use the ship's weaponSystem */
+        HandleWeaponFiring(inputs);
     }
 
 
@@ -58,7 +63,19 @@ public class ShipControls : MonoBehaviour {
         }
     }
 
-    
+
+    public void HandleWeaponFiring(UserInputs inputs) {
+        /*
+         * Fire a shot if the player is pressing the left-click
+         */
+
+        if(inputs.leftMouseButtonHeld) {
+            controlledShip.FireGuns();
+        }
+    }
+
+    /* -------- Outside Event functions ------------------------------------------------------- */
+
     public void RotateCamera(float x, float y) {
         /*
          * Rotate the camera's resting transform by the given amount. Prevent the transform from flipping upside down.

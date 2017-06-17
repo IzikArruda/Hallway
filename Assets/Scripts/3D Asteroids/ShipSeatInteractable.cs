@@ -25,6 +25,8 @@ public class ShipSeatInteractable : Interactable {
     /* A link to the player if they are present inside the ship */
     public CustomPlayerController PlayerInShip;
 
+    
+    /* -------- Built-in Unity Functions ------------------------------------------------------- */
 
     public void Start() {
 
@@ -32,6 +34,9 @@ public class ShipSeatInteractable : Interactable {
         startingPosition = viewingTransform.localPosition;
         startingAngle = viewingTransform.localEulerAngles;
     }
+    
+
+    /* -------- Inherited Interactable ------------------------------------------------------- */
 
     public override void Activated(CustomPlayerController player) {
         /*
@@ -57,13 +62,14 @@ public class ShipSeatInteractable : Interactable {
                 playerLink = null;
             }
         }
-
-        /* Send the inputs to the ship's controls and update the camera's viewing position */
+        /* Send the inputs to the ship's controls  */
         else {
-            shipControls.ConvertInputs(playerInputs);
+            shipControls.HandleInputs(playerInputs);
         }
     }
     
+
+    /* -------- Camera Fix Functions ---------------------------------------------------------- */
 
     public void CameraTransformUpdated() {
         /*
@@ -85,10 +91,8 @@ public class ShipSeatInteractable : Interactable {
         viewingTransform.localEulerAngles = startingAngle;
     }
 
-
-
-
-
+    
+    /* -------- Player Adjusting Functions ---------------------------------------------------- */
 
     public void AdjustPlayerAfterShipMove(Vector3 shipMovementVector) {
         /*

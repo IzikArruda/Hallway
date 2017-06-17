@@ -272,7 +272,6 @@ public class CustomPlayerController : MonoBehaviour {
          * If the currentLegLength rayTrace does not connect to the floor, the player will undergo the effects
          * of gravity instead of taking a step. When under the effects of graivty, the previous step is ignored.
          */
-        Vector3 gravityVector = Vector3.zero;
         Vector3 upDirection = transform.rotation*Vector3.up;
         Vector3 forwardVector = transform.rotation*Vector3.forward;
         Vector3 tempForwardVector = Vector3.zero; ;
