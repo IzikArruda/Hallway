@@ -97,6 +97,19 @@ public class LaserGun : ShipWeapon {
     }
 
 
+    /* -------- Collision Detection Functions ------------------------------------------------------- */
+
+    public void CheckForCollisions() {
+        /*
+         * Check if the laser has collided with any hittable objects
+         */
+
+        /* Start by checking if the laser is roughly close to an asteroid */
+
+
+    }
+
+
     /* -------- Event Functions -------------------------------------------------------------------- */
 
     public void UpdateLaserPower(float time) {

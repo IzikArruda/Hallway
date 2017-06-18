@@ -13,20 +13,14 @@ public class ShipObject : MonoBehaviour {
     /* The controls of this ship */
     public ShipControls shipControls;
 
-    /* The current rotation of the ship */
+    /* Ship's positiontal velocity */
     [HideInInspector]
-    public Quaternion rotation;
+    public Vector3 positionalVelocity = new Vector3(0, 0, 0);
 
-    /* Ship's velocity */
+    /* Rotational velocity. X = pitch, Y = yaw, Z = Roll */
     [HideInInspector]
-    public Vector3 velocity = new Vector3(0, 0, 0);
-    [HideInInspector]
-    public float yawVelocity;
-    [HideInInspector]
-    public float pitchVelocity;
-    [HideInInspector]
-    public float rollVelocity;
-    
+    public Vector3 rotationalVelocity = new Vector3(0, 0, 0);
+
     /* Particle system used to represent the ship's velocity vector */
     public ParticleSystem velocityVectorParticles;
     
@@ -54,13 +48,6 @@ public class ShipObject : MonoBehaviour {
     /* ------------ Built-in Unity Functions ------------------------------------------------------------ */
 
     void Start() {
-
-        /* Set the startign rotation of the ship */
-        rotation = transform.rotation;
-        
-        /* Start the ship off by adding forward momentum */
-        //IncreaseForwardVelocity(0.1f);
-        //IncreaseVelocity(new Vector3(0.01f, 0, 0));
     }
 
     void Update() {
@@ -69,10 +56,10 @@ public class ShipObject : MonoBehaviour {
          */
 
         /* Move the ship and it's contents by it's current velocity */
-        UpdatePosition();
-        
+        ApplyPositionalVelocity();
+
         /* Properly rotate the ship */
-        UpdateRotation();
+        ApplyRotationalVelocity();
 
         /* Properly place the vector dust particle system to reflect the ship's velocity */
         UpdateVelocityDust();
@@ -81,75 +68,88 @@ public class ShipObject : MonoBehaviour {
     
     /* ----------- Update Functions ------------------------------------------------------------------ */
 
-    public void UpdatePosition() {
+    public void ApplyPositionalVelocity() {
         /*
          * Use the ship's velocity movement to move the ship and it's contents in the world
          */
         float velocityDragTotal;
 
         /* Move the ship */
-        transform.position += velocity;
+        transform.position += positionalVelocity;
 
         /* Move the player and their saved camera positions */
-        shipControls.linkedShipInteractable.AdjustPlayerAfterShipMove(velocity);
+        shipControls.linkedShipInteractable.AdjustPlayerAfterShipMove(positionalVelocity);
 
         /* Apply drag to the velocity */
-        velocityDragTotal = velocityDragSetAmount + velocity.magnitude*velocityDragPercentage;
-        if(velocityDragTotal < Mathf.Abs(velocity.magnitude)) {
-            velocity -= velocity.normalized*velocityDragTotal;
+        velocityDragTotal = velocityDragSetAmount + positionalVelocity.magnitude*velocityDragPercentage;
+        if(velocityDragTotal < Mathf.Abs(positionalVelocity.magnitude)) {
+            positionalVelocity -= positionalVelocity.normalized*velocityDragTotal;
         }
         else {
-            velocity = Vector3.zero;
+            positionalVelocity = Vector3.zero;
         }
     }
 
-    public void UpdateRotation() {
+    public void ApplyRotationalVelocity() {
         /*
          * Apply the rotation velocity to the ship on this frame. Reduce the rotation amount each frame.
          */
         float rotationDragTotal;
+
+        /* Apply the pitch rotation */
+        ApplyRotation(rotationalVelocity.x, new Vector3(1, 0, 0));
+
+        /* Apply the yaw rotation */
+        ApplyRotation(rotationalVelocity.y, new Vector3(0, 1, 0));
         
-        /* Apply the rotation */
-        UpdateYaw();
-        UpdatePitch();
-        
-        /* Reduce the rotation velocity every frame */
-        rotationDragTotal = rotationDragSetAmount*Mathf.Sign(yawVelocity) + rotationDragPercentage*yawVelocity;
-        if(rotationDragTotal < Mathf.Abs(yawVelocity)) {
-            yawVelocity -= rotationDragTotal;
-        }else {
-            yawVelocity = 0;
+        /* Apply the roll rotation */
+        ApplyRotation(rotationalVelocity.z, new Vector3(0, 0, 1));
+
+
+
+        /* Reduce the pitch rotational velocity */
+        rotationDragTotal = rotationDragSetAmount*Mathf.Sign(rotationalVelocity.x) + rotationDragPercentage*rotationalVelocity.x;
+        if(rotationDragTotal < Mathf.Abs(rotationalVelocity.x)) {
+            rotationalVelocity.x -= rotationDragTotal;
+        }
+        else {
+            rotationalVelocity.x = 0;
         }
 
+        /* Reduce the yaw rotational velocity */
+        rotationDragTotal = rotationDragSetAmount*Mathf.Sign(rotationalVelocity.y) + rotationDragPercentage*rotationalVelocity.y;
+        if(rotationDragTotal < Mathf.Abs(rotationalVelocity.y)) {
+            rotationalVelocity.y -= rotationDragTotal;
+        }
+        else {
+            rotationalVelocity.y = 0;
+        }
 
+        /* Reduce the roll rotational velocity */
+        rotationDragTotal = rotationDragSetAmount*Mathf.Sign(rotationalVelocity.z) + rotationDragPercentage*rotationalVelocity.z;
+        if(rotationDragTotal < Mathf.Abs(rotationalVelocity.z)) {
+            rotationalVelocity.z -= rotationDragTotal;
+        }
+        else {
+            rotationalVelocity.z = 0;
+        }
     }
 
-    public void UpdateYaw() {
+    public void ApplyRotation(float rotationAmount, Vector3 rotationAxis) {
         /*
-         * Use the given inputs to calculate how much the ship will rotate along the Up vector.
-         * Any Yaw rotation applied to the ship will also be applied to the player inside.
+         * Use the given amount and axis to rotate the ship. Any rotation will also be
+         * applied to the player inside the ship.
          */
-        float rotationAmount = yawVelocity;
 
-        /* Rotate the ship */
-        transform.RotateAround(centerOfMass.transform.position, Vector3.up, rotationAmount);
+        /* Adjust the rotationAxis so it is relative to the ship's current rotation */
+        rotationAxis = transform.rotation*rotationAxis;
+        
+        /* Apply the rotation to the ship */
+        transform.RotateAround(centerOfMass.transform.position, rotationAxis, rotationAmount);
 
         /* Rotate the player and their saved camera position */
-        shipControls.linkedShipInteractable.AdjustPlayerAfterShipYaw(centerOfMass.transform.position, rotationAmount);
-    }
+        shipControls.linkedShipInteractable.AdjustPlayerAfterShipRotation(centerOfMass.transform.position, rotationAxis, rotationAmount);
 
-    public void UpdatePitch() {
-        /*
-         * Use the given inputs to calculate how much the ship will rotate along the Left vector
-         * Any pitch applied to the ship will also be applied to the player inside.
-         */
-        float rotationAmount = pitchVelocity;
-
-        /* Rotate the ship */
-        transform.RotateAround(centerOfMass.transform.position, Vector3.left, rotationAmount);
-
-        /* Rotate the player and their saved camera position */
-        shipControls.linkedShipInteractable.AdjustPlayerAfterShipPitch(centerOfMass.transform.position, rotationAmount);
     }
 
     public void UpdateVelocityDust() {
@@ -157,7 +157,7 @@ public class ShipObject : MonoBehaviour {
          * Update the ship's dust velocity particle system to reflect the direction and magnitude of the ship's velocity.
          * If the ship is moving too slow, the particles will not be generated.
          */
-        float currentSpeedToMaxRatio = velocity.magnitude / maxVelocity;
+        float currentSpeedToMaxRatio = positionalVelocity.magnitude / maxVelocity;
         float minDustSpeedRatio = 0.1f;
         float maxDustSpeedLimit = 800;
         int maxDustEmissionRate = 500;
@@ -183,9 +183,9 @@ public class ShipObject : MonoBehaviour {
 
 
         /* Place the system half the bounds length from the ship's center in the velocity's direction */
-        if(velocity != Vector3.zero) {
-            velocityVectorParticles.transform.rotation = Quaternion.LookRotation(velocity.normalized);
-            velocityVectorParticles.transform.position = transform.position + velocity.normalized*(particleBaseSpeed*velocityVectorParticles.startLifetime)/2f;
+        if(positionalVelocity != Vector3.zero) {
+            velocityVectorParticles.transform.rotation = Quaternion.LookRotation(positionalVelocity.normalized);
+            velocityVectorParticles.transform.position = transform.position + positionalVelocity.normalized*(particleBaseSpeed*velocityVectorParticles.startLifetime)/2f;
         }
     }
 
@@ -198,11 +198,11 @@ public class ShipObject : MonoBehaviour {
          * of the given vector effects how much velocity will be added.
          */
 
-        velocity += velocityIncrease*velocityPower;
+        positionalVelocity += velocityIncrease*velocityPower;
 
         /* Prevent the velocity from going above the limit */
-        if(velocity.magnitude > maxVelocity) {
-            velocity = velocity.normalized*maxVelocity;
+        if(positionalVelocity.magnitude > maxVelocity) {
+            positionalVelocity = positionalVelocity.normalized*maxVelocity;
         }
     }
 
@@ -229,21 +229,22 @@ public class ShipObject : MonoBehaviour {
 
         IncreaseVelocity(transform.rotation*Vector3.left*leftVelocity);
     }
-    
+
     public void IncreaseYawVelocity(float yaw) {
         /*
          * Increase the speed of the ship's yaw rotation. Do not increase it beyond it's speed limit.
          */
-         
+
         /* Modifiy the rotation amount relative to the ship's rotation strength */
         yaw *= rotationPower;
 
-        /* Prevent from adding rotation velocity to push it over the maxRotationSpeed */
-        yaw = LimitRotationVelocityIncrease(yaw, yawVelocity);
-        
-        yawVelocity += yaw;
+        /* Prevent the scenario of adding enough yaw to push the rotation past it's limit */
+        yaw = LimitRotationVelocityIncrease(yaw, rotationalVelocity.y);
+
+        /* Apply the added yaw rotation to the current amount */
+        rotationalVelocity.y += yaw;
     }
-    
+
     public void IncreasePitchVelocity(float pitch) {
         /*
          * Increase the speed of the ship's pitch rotation
@@ -252,10 +253,11 @@ public class ShipObject : MonoBehaviour {
         /* Modifiy the rotation amount relative to the ship's rotation strength */
         pitch *= rotationPower;
 
-        /* Prevent from adding rotation velocity to push it over the maxRotationSpeed */
-        pitch = LimitRotationVelocityIncrease(pitch, pitchVelocity);
-        
-        pitchVelocity += pitch;
+        /* Prevent the scenario of adding enough pitch to push the rotation past it's limit */
+        pitch = LimitRotationVelocityIncrease(pitch, rotationalVelocity.x);
+
+        /* Apply the added pitch rotation to the current amount */
+        rotationalVelocity.x += pitch;
     }
 
     public void IncreaseRollVelocity(float roll) {
@@ -266,10 +268,11 @@ public class ShipObject : MonoBehaviour {
         /* Modifiy the rotation amount relative to the ship's rotation strength */
         roll *= rotationPower;
 
-        /* Prevent from adding rotation velocity to push it over the maxRotationSpeed */
-        roll = LimitRotationVelocityIncrease(roll, rollVelocity);
+        /* Prevent the scenario of adding enough roll to push the rotation past it's limit */
+        roll = LimitRotationVelocityIncrease(roll, rotationalVelocity.z);
 
-        rollVelocity += roll;
+        /* Apply the added roll rotation to the current amount */
+        rotationalVelocity.z += roll;
     }
 
     public float LimitRotationVelocityIncrease(float addedVel, float currentVel) {

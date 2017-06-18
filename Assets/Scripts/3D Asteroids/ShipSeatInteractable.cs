@@ -104,36 +104,16 @@ public class ShipSeatInteractable : Interactable {
         }
     }
     
-    public void AdjustPlayerAfterShipYaw(Vector3 point, float yawAmount) {
+
+
+    public void AdjustPlayerAfterShipRotation(Vector3 point, Vector3 rotationAxis, float rotationAmount) {
         /*
-         * Run anytime the ship undergoes yaw rotation around the given point. 
-         * Keeps the player in their position relative to the ship.
+         * Run anytime the ship undergoes a rotation around a given point in the given axis.
+         * Used to keep the player in their relative position in the ship.
          */
 
         if(PlayerInShip != null) {
-            PlayerInShip.transform.RotateAround(point, Vector3.up, yawAmount);
-        }
-    }
-
-    public void AdjustPlayerAfterShipPitch(Vector3 point, float pitchAmount) {
-        /*
-         * Run anytime the ship undergoes pitch rotation around the given point. 
-         * Keeps the player in their position relative to the ship.
-         */
-
-        if(PlayerInShip != null) {
-            PlayerInShip.transform.RotateAround(point, Vector3.left, pitchAmount);
-        }
-    }
-
-    public void AdjustPlayerAfterShipRotation(Vector3 point, Vector3 rotation) {
-        /*
-         * Runs anytime the ship undergoes a rotation. Keeps the player
-         * in their relative position in the ship when it rotates.
-         */
-
-        if(PlayerInShip != null) {
-            PlayerInShip.transform.RotateAround(point, Vector3.left, rotation.x);
+            PlayerInShip.transform.RotateAround(point, rotationAxis, rotationAmount);
         }
     }
 }
