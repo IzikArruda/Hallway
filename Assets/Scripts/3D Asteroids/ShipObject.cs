@@ -5,21 +5,10 @@ using System.Collections;
  * A ship that can move and be controlled in space. All it's functions focus on how it's 
  * mechanics function, such as rotation, firing shots or collisions.
  */
-public class ShipObject : MonoBehaviour {
-
-    /* The center of mass of the ship. The point that the ship rotates around */
-    public GameObject centerOfMass;
+public class ShipObject : SpaceObject {
 
     /* The controls of this ship */
     public ShipControls shipControls;
-
-    /* Ship's positiontal velocity */
-    [HideInInspector]
-    public Vector3 positionalVelocity = new Vector3(0, 0, 0);
-
-    /* Rotational velocity. X = pitch, Y = yaw, Z = Roll */
-    [HideInInspector]
-    public Vector3 rotationalVelocity = new Vector3(0, 0, 0);
 
     /* Particle system used to represent the ship's velocity vector */
     public ParticleSystem velocityVectorParticles;
@@ -50,7 +39,7 @@ public class ShipObject : MonoBehaviour {
     void Start() {
     }
 
-    void Update() {
+    public override void Update() {
         /*
          * Handle everything a ship needs to do on each frame
          */
@@ -68,7 +57,7 @@ public class ShipObject : MonoBehaviour {
     
     /* ----------- Update Functions ------------------------------------------------------------------ */
 
-    public void ApplyPositionalVelocity() {
+    public override void ApplyPositionalVelocity() {
         /*
          * Use the ship's velocity movement to move the ship and it's contents in the world
          */
@@ -90,11 +79,10 @@ public class ShipObject : MonoBehaviour {
         }
     }
 
-    public void ApplyRotationalVelocity() {
+    public override void ApplyRotationalVelocity() {
         /*
          * Apply the rotation velocity to the ship on this frame. Reduce the rotation amount each frame.
          */
-        float rotationDragTotal;
 
         /* Apply the pitch rotation */
         ApplyRotation(rotationalVelocity.x, new Vector3(1, 0, 0));
@@ -105,7 +93,32 @@ public class ShipObject : MonoBehaviour {
         /* Apply the roll rotation */
         ApplyRotation(rotationalVelocity.z, new Vector3(0, 0, 1));
 
+        /* Apply drag to each rotational velocity */
+        ApplyDragToRotation();
+    }
 
+    public override void ApplyRotation(float rotationAmount, Vector3 rotationAxis) {
+        /*
+         * Use the given amount and axis to rotate the ship. Any rotation will also be
+         * applied to the player inside the ship.
+         */
+
+        /* Adjust the rotationAxis so it is relative to the ship's current rotation */
+        rotationAxis = transform.rotation*rotationAxis;
+        
+        /* Apply the rotation to the ship */
+        transform.RotateAround(centerOfMass.transform.position, rotationAxis, rotationAmount);
+
+        /* Rotate the player and their saved camera position */
+        shipControls.linkedShipInteractable.AdjustPlayerAfterShipRotation(centerOfMass.transform.position, rotationAxis, rotationAmount);
+
+    }
+
+    public void ApplyDragToRotation() {
+        /*
+         * Apply drag to each of the rotational velocities
+         */
+        float rotationDragTotal;
 
         /* Reduce the pitch rotational velocity */
         rotationDragTotal = rotationDragSetAmount*Mathf.Sign(rotationalVelocity.x) + rotationDragPercentage*rotationalVelocity.x;
@@ -133,23 +146,6 @@ public class ShipObject : MonoBehaviour {
         else {
             rotationalVelocity.z = 0;
         }
-    }
-
-    public void ApplyRotation(float rotationAmount, Vector3 rotationAxis) {
-        /*
-         * Use the given amount and axis to rotate the ship. Any rotation will also be
-         * applied to the player inside the ship.
-         */
-
-        /* Adjust the rotationAxis so it is relative to the ship's current rotation */
-        rotationAxis = transform.rotation*rotationAxis;
-        
-        /* Apply the rotation to the ship */
-        transform.RotateAround(centerOfMass.transform.position, rotationAxis, rotationAmount);
-
-        /* Rotate the player and their saved camera position */
-        shipControls.linkedShipInteractable.AdjustPlayerAfterShipRotation(centerOfMass.transform.position, rotationAxis, rotationAmount);
-
     }
 
     public void UpdateVelocityDust() {
@@ -190,6 +186,16 @@ public class ShipObject : MonoBehaviour {
     }
 
 
+    /* ----------- Collision Functions ------------------------------------------------------------------ */
+
+    public override void HitByLaser(LaserGun laserGun) {
+        /*
+         * React to the ship being shot by a laser
+         */
+
+        Debug.Log("Player shot by laser");
+    }
+
     /* ---------- Ship Controls Functions ---------------------------------------------------------- */
 
     public void IncreaseVelocity(Vector3 velocityIncrease) {
@@ -198,6 +204,7 @@ public class ShipObject : MonoBehaviour {
          * of the given vector effects how much velocity will be added.
          */
 
+        /* Modify the velocity amount to be relative to the ship's velocity power */
         positionalVelocity += velocityIncrease*velocityPower;
 
         /* Prevent the velocity from going above the limit */

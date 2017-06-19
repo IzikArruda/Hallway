@@ -104,8 +104,6 @@ public class ShipSeatInteractable : Interactable {
         }
     }
     
-
-
     public void AdjustPlayerAfterShipRotation(Vector3 point, Vector3 rotationAxis, float rotationAmount) {
         /*
          * Run anytime the ship undergoes a rotation around a given point in the given axis.
