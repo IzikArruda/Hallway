@@ -42,6 +42,9 @@ public class LaserGun : ShipWeapon {
     /* The base damage of the laser */
     public float baseDamage;
 
+    /* The material of the laser's mesh */
+    private Material laserMaterial;
+
 
     /* -------- Built-in Unity Functions ------------------------------------------------------- */
 
@@ -49,6 +52,10 @@ public class LaserGun : ShipWeapon {
         /*
          * Initilize the laser beam of the gun
          */
+
+        /* Set the material used for the laser's mesh */
+        laserMaterial = new Material(Shader.Find("Unlit/Color"));
+        laserMaterial.color = Color.blue;
 
         /* Set up the mesh filter and renderer for the laser beam */
         ResetMesh();
@@ -58,9 +65,9 @@ public class LaserGun : ShipWeapon {
 
         laserBeam = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         laserBeam.transform.parent = transform;
+        laserBeam.SetActive(false);
 
         ResetBeam();
-
     }
 
     public override void Update() {
@@ -80,9 +87,9 @@ public class LaserGun : ShipWeapon {
 
         /* Update the size of the laser to reflect any changes */
         UpdateLaserSize();
-
-
-
+        
+        /* Update the mesh of the laser. This needs to be changed to UpdateLaserMesh instead of the create one */
+        CreateLaserMesh();
     }
 
 
@@ -306,124 +313,74 @@ public class LaserGun : ShipWeapon {
         laserHitParticles.Emit((int) laserDamage);
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
     public void CreateLaserMesh() {
         /*
-         * Create a hemisphere that is used as the start of the laser beam. The amount of points on the hemisphere
-         * and it's radius is relative to the laser's width at max power.
+         * Create a mesh used as the laser beam. It's comprised of two cones on both ends of the laser.
+         * Connecting both cones forms the body of the laser. The circle that forms the body and the 
+         * base of the cones has a size and a vertex count relative to the maximum width of the laser.
+         * circlePointCount is how many points are used to draw the circle base of the cone on either ends.
          */
         int circlePointCount = 20;
-        float circleRadius = laserMaxWidth/2f;
+        float circleRadius = 3*GetLaserWidth()/2f;
+        float lengthOfLaser = currentLaserLength;
         Mesh mesh = transform.GetComponent<MeshFilter>().sharedMesh;
+        Vector3[] startingCone;
+        Vector3[] endingCone;
+        Vector3[] laserMeshPoints;
 
+        /* Get the points that form the cone protruding from the weapon's local firing point, (0, 0, 0) */
+        startingCone = GetHemisphereSpoints(circlePointCount, circleRadius);
 
+        /* Derive the points of the cone on the end of the laser using the cone from the start of the laser */
+        endingCone = new Vector3[startingCone.Length];
+        for(int i = 0; i < startingCone.Length-1; i++) {
+            endingCone[i] = startingCone[i] + new Vector3(0, 0, lengthOfLaser);
+        }
+        endingCone[startingCone.Length-1] = startingCone[startingCone.Length-1] + new Vector3(0, 0, (lengthOfLaser+circleRadius*2));
 
-        /* Get the points for the hemisphere. The mesh will be a circle forming the main cylindrical shape 
-         * of the laser beam that converges onto a single point that is the weapon's firing point, (0, 0, 0) */
-        Vector3[] hemispherePoints = GetHemisphereSpoints(circlePointCount, circleRadius);
+        /* Combine both array of points */
+        laserMeshPoints = new Vector3[startingCone.Length + endingCone.Length];
+        System.Array.Copy(startingCone, laserMeshPoints, startingCone.Length);
+        System.Array.Copy(endingCone, 0, laserMeshPoints, startingCone.Length, endingCone.Length);
         
-        /* Get the points for the other end of the laser. It's done the same way as the first side */
-        Vector3[] endHemisphere = GetHemisphereSpoints(circlePointCount, -circleRadius);
-        //Note: if you use endHemisphere with the triangles, it's inversed
-        //The other end of the hemisphere is just the first one but it's pushed along the laser's direction 
-        float lengthOfLaser = 1;
-        for(int i = 0; i < hemispherePoints.Length-1; i++) {
-            endHemisphere[i] = hemispherePoints[i] + transform.forward*lengthOfLaser;
-        }
-        //The last one is extended by the length and the radius of the sphere*2
-        endHemisphere[hemispherePoints.Length-1] = hemispherePoints[hemispherePoints.Length-1] + transform.forward*(lengthOfLaser+circleRadius*2);
+
+        /* Get a count of all the polygons needed to draw the laser and use an array to track each polygon */
+        int coneTrigCount = (circlePointCount+1)*3;
+        int connectingConesTrigCount = (startingCone.Length-1)*6;
+        int[] triangles = new int[coneTrigCount*2 + connectingConesTrigCount];
 
 
-
-
-
-        /* Set the mesh's vertices and triangles to form the hemisphere */
-        mesh.vertices = hemispherePoints;
-        int[] triangles = new int[(circlePointCount+1)*3];
+        /* Add the starting cone's polygons */
         for(int i = 0; i < circlePointCount-1; i++) {
             triangles[i*3 + 0] = circlePointCount;
             triangles[i*3 + 1] = i+1;
             triangles[i*3 + 2] = i;
         }
-        triangles[triangles.Length - 3] = circlePointCount;
-        triangles[triangles.Length - 2] = 0;
-        triangles[triangles.Length - 1] = circlePointCount-1;
-        mesh.triangles = triangles;
+        triangles[coneTrigCount - 3] = circlePointCount;
+        triangles[coneTrigCount - 2] = 0;
+        triangles[coneTrigCount - 1] = circlePointCount-1;
 
-
-        /* Now add the other hemisphere */
-        mesh.vertices = endHemisphere;
-        triangles = new int[(circlePointCount+1)*3];
+        /* Add the ending cone's polygons, using an offset of where we left off */
+        int currentPolygonOffset = coneTrigCount;
         for(int i = 0; i < circlePointCount-1; i++) {
-            triangles[i*3 + 0] = circlePointCount;
-            triangles[i*3 + 1] = i;
-            triangles[i*3 + 2] = i+1;
+            triangles[currentPolygonOffset + i*3 + 0] = (circlePointCount+1) + circlePointCount;
+            triangles[currentPolygonOffset + i*3 + 1] = (circlePointCount+1) + i;
+            triangles[currentPolygonOffset + i*3 + 2] = (circlePointCount+1) + i+1;
         }
-        triangles[triangles.Length - 3] = circlePointCount-1;
-        triangles[triangles.Length - 2] = 0;
-        triangles[triangles.Length - 1] = circlePointCount;
-        mesh.triangles = triangles;
+        triangles[currentPolygonOffset + coneTrigCount - 3] = (circlePointCount+1) + circlePointCount - 1;
+        triangles[currentPolygonOffset + coneTrigCount - 2] = (circlePointCount+1);
+        triangles[currentPolygonOffset + coneTrigCount - 1] = (circlePointCount+1) + circlePointCount;
 
-
-
-
-
-
-        /* Combine arrays */
-        Vector3[] addedTogether = new Vector3[hemispherePoints.Length + endHemisphere.Length];
-        System.Array.Copy(hemispherePoints, addedTogether, hemispherePoints.Length);
-        System.Array.Copy(endHemisphere, 0, addedTogether, hemispherePoints.Length, endHemisphere.Length);
-        mesh.vertices = addedTogether;
-
-
-        /* Set up the size of the triangle array */
-        int hemiTrigCount = (circlePointCount+1)*3;
-        int connectingHemisSize = (hemispherePoints.Length-1)*6;
-        triangles = new int[hemiTrigCount*2 + connectingHemisSize];
-
-
-
-        /* Set up the triangles for both */
-        //First hemi. Triangle range of [0 to hemiTrigCount-1]
+        /* Add the polygons that connect the cone ends, updating the current polygon offset */
+        currentPolygonOffset += coneTrigCount;
         for(int i = 0; i < circlePointCount-1; i++) {
-            triangles[i*3 + 0] = circlePointCount;
-            triangles[i*3 + 1] = i+1;
-            triangles[i*3 + 2] = i;
-        }
-        triangles[hemiTrigCount - 3] = circlePointCount;
-        triangles[hemiTrigCount - 2] = 0;
-        triangles[hemiTrigCount - 1] = circlePointCount-1;
-
-        //Second hemi. Triangle range of [hemiTrigCount to (hemiTrigCount + (circlePointCount)*3) + 2]
-        for(int i = 0; i < circlePointCount-1; i++) {
-            triangles[hemiTrigCount + i*3 + 0] = (hemiTrigCount/3)*2 -1;
-            triangles[hemiTrigCount + i*3 + 1] = hemiTrigCount/3 + i;
-            triangles[hemiTrigCount + i*3 + 2] = hemiTrigCount/3 + i+1;
-        }
-        triangles[(hemiTrigCount + (circlePointCount)*3) + 0] = circlePointCount + circlePointCount;
-        triangles[(hemiTrigCount + (circlePointCount)*3) + 1] = circlePointCount + 1;
-        triangles[(hemiTrigCount + (circlePointCount)*3) + 2] = addedTogether.Length-1;
-
-        //Connect the hemispheres. Triangle range of [((hemiTrigCount + (circlePointCount+1)*3)) to the end (triangles.Length-1)]
-        for(int i = 0; i < circlePointCount-1; i++) {
-            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 0] = (circlePointCount+1) + i;
-            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 1] = i;
-            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 2] = i+1;
-            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 3] = (circlePointCount+1) + i+1;
-            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 4] = (circlePointCount+1) + i;
-            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 5] = i+1;
+            triangles[currentPolygonOffset + i*6 + 0] = (circlePointCount+1) + i;
+            triangles[currentPolygonOffset + i*6 + 1] = i;
+            triangles[currentPolygonOffset + i*6 + 2] = i+1;
+            triangles[currentPolygonOffset + i*6 + 3] = (circlePointCount+1) + i+1;
+            triangles[currentPolygonOffset + i*6 + 4] = (circlePointCount+1) + i;
+            triangles[currentPolygonOffset + i*6 + 5] = i+1;
         }
         triangles[triangles.Length - 6] = (circlePointCount+1) + circlePointCount-1;
         triangles[triangles.Length - 5] = 0;
@@ -432,14 +389,16 @@ public class LaserGun : ShipWeapon {
         triangles[triangles.Length - 2] = (circlePointCount-1);
         triangles[triangles.Length - 1] = 0;
 
+        /* Assign the points and the polygons to the mesh */
+        mesh.vertices = laserMeshPoints;
         mesh.triangles = triangles;
-
-
 
         /* Optimize and calculate the needed values for the mesh to be complete */
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
         mesh.Optimize();
+        mesh.name = "Laser Beam";
+        transform.GetComponent<MeshRenderer>().material = laserMaterial;
     }
     
     public void ResetMesh() {
