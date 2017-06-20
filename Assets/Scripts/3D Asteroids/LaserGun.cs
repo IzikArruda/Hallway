@@ -50,6 +50,12 @@ public class LaserGun : ShipWeapon {
          * Initilize the laser beam of the gun
          */
 
+        /* Set up the mesh filter and renderer for the laser beam */
+        ResetMesh();
+
+        /* Create the mesh that is used at the start of the laser */
+        CreateLaserMesh();
+
         laserBeam = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         laserBeam.transform.parent = transform;
 
@@ -299,4 +305,196 @@ public class LaserGun : ShipWeapon {
         //Emit the particles
         laserHitParticles.Emit((int) laserDamage);
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public void CreateLaserMesh() {
+        /*
+         * Create a hemisphere that is used as the start of the laser beam. The amount of points on the hemisphere
+         * and it's radius is relative to the laser's width at max power.
+         */
+        int circlePointCount = 20;
+        float circleRadius = laserMaxWidth/2f;
+        Mesh mesh = transform.GetComponent<MeshFilter>().sharedMesh;
+
+
+
+        /* Get the points for the hemisphere. The mesh will be a circle forming the main cylindrical shape 
+         * of the laser beam that converges onto a single point that is the weapon's firing point, (0, 0, 0) */
+        Vector3[] hemispherePoints = GetHemisphereSpoints(circlePointCount, circleRadius);
+        
+        /* Get the points for the other end of the laser. It's done the same way as the first side */
+        Vector3[] endHemisphere = GetHemisphereSpoints(circlePointCount, -circleRadius);
+        //Note: if you use endHemisphere with the triangles, it's inversed
+        //The other end of the hemisphere is just the first one but it's pushed along the laser's direction 
+        float lengthOfLaser = 1;
+        for(int i = 0; i < hemispherePoints.Length-1; i++) {
+            endHemisphere[i] = hemispherePoints[i] + transform.forward*lengthOfLaser;
+        }
+        //The last one is extended by the length and the radius of the sphere*2
+        endHemisphere[hemispherePoints.Length-1] = hemispherePoints[hemispherePoints.Length-1] + transform.forward*(lengthOfLaser+circleRadius*2);
+
+
+
+
+
+        /* Set the mesh's vertices and triangles to form the hemisphere */
+        mesh.vertices = hemispherePoints;
+        int[] triangles = new int[(circlePointCount+1)*3];
+        for(int i = 0; i < circlePointCount-1; i++) {
+            triangles[i*3 + 0] = circlePointCount;
+            triangles[i*3 + 1] = i+1;
+            triangles[i*3 + 2] = i;
+        }
+        triangles[triangles.Length - 3] = circlePointCount;
+        triangles[triangles.Length - 2] = 0;
+        triangles[triangles.Length - 1] = circlePointCount-1;
+        mesh.triangles = triangles;
+
+
+        /* Now add the other hemisphere */
+        mesh.vertices = endHemisphere;
+        triangles = new int[(circlePointCount+1)*3];
+        for(int i = 0; i < circlePointCount-1; i++) {
+            triangles[i*3 + 0] = circlePointCount;
+            triangles[i*3 + 1] = i;
+            triangles[i*3 + 2] = i+1;
+        }
+        triangles[triangles.Length - 3] = circlePointCount-1;
+        triangles[triangles.Length - 2] = 0;
+        triangles[triangles.Length - 1] = circlePointCount;
+        mesh.triangles = triangles;
+
+
+
+
+
+
+        /* Combine arrays */
+        Vector3[] addedTogether = new Vector3[hemispherePoints.Length + endHemisphere.Length];
+        System.Array.Copy(hemispherePoints, addedTogether, hemispherePoints.Length);
+        System.Array.Copy(endHemisphere, 0, addedTogether, hemispherePoints.Length, endHemisphere.Length);
+        mesh.vertices = addedTogether;
+
+
+        /* Set up the size of the triangle array */
+        int hemiTrigCount = (circlePointCount+1)*3;
+        int connectingHemisSize = (hemispherePoints.Length-1)*6;
+        triangles = new int[hemiTrigCount*2 + connectingHemisSize];
+
+
+
+        /* Set up the triangles for both */
+        //First hemi. Triangle range of [0 to hemiTrigCount-1]
+        for(int i = 0; i < circlePointCount-1; i++) {
+            triangles[i*3 + 0] = circlePointCount;
+            triangles[i*3 + 1] = i+1;
+            triangles[i*3 + 2] = i;
+        }
+        triangles[hemiTrigCount - 3] = circlePointCount;
+        triangles[hemiTrigCount - 2] = 0;
+        triangles[hemiTrigCount - 1] = circlePointCount-1;
+
+        //Second hemi. Triangle range of [hemiTrigCount to (hemiTrigCount + (circlePointCount)*3) + 2]
+        for(int i = 0; i < circlePointCount-1; i++) {
+            triangles[hemiTrigCount + i*3 + 0] = (hemiTrigCount/3)*2 -1;
+            triangles[hemiTrigCount + i*3 + 1] = hemiTrigCount/3 + i;
+            triangles[hemiTrigCount + i*3 + 2] = hemiTrigCount/3 + i+1;
+        }
+        triangles[(hemiTrigCount + (circlePointCount)*3) + 0] = circlePointCount + circlePointCount;
+        triangles[(hemiTrigCount + (circlePointCount)*3) + 1] = circlePointCount + 1;
+        triangles[(hemiTrigCount + (circlePointCount)*3) + 2] = addedTogether.Length-1;
+
+        //Connect the hemispheres. Triangle range of [((hemiTrigCount + (circlePointCount+1)*3)) to the end (triangles.Length-1)]
+        for(int i = 0; i < circlePointCount-1; i++) {
+            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 0] = (circlePointCount+1) + i;
+            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 1] = i;
+            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 2] = i+1;
+            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 3] = (circlePointCount+1) + i+1;
+            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 4] = (circlePointCount+1) + i;
+            triangles[(hemiTrigCount + (circlePointCount+1)*3) + i*6 + 5] = i+1;
+        }
+        triangles[triangles.Length - 6] = (circlePointCount+1) + circlePointCount-1;
+        triangles[triangles.Length - 5] = 0;
+        triangles[triangles.Length - 4] = (circlePointCount+1);
+        triangles[triangles.Length - 3] = (circlePointCount+1) + circlePointCount-1;
+        triangles[triangles.Length - 2] = (circlePointCount-1);
+        triangles[triangles.Length - 1] = 0;
+
+        mesh.triangles = triangles;
+
+
+
+        /* Optimize and calculate the needed values for the mesh to be complete */
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        mesh.Optimize();
+    }
+    
+    public void ResetMesh() {
+        /*
+         * Reset the mesh renderer and mesh filter on the gameObject so 
+         * it can be used to draw dthe laser beam fired by the weapon.
+         */
+
+        /* Add an empty mesh filter that will hold the hemisphere */
+        MeshFilter meshFilter = transform.GetComponent<MeshFilter>();
+        if(meshFilter == null) {
+            meshFilter = gameObject.AddComponent<MeshFilter>();
+        }
+        else {
+            meshFilter.mesh = null;
+        }
+
+        /* Make sure a mesh renderer is active */
+        MeshRenderer meshRenderer = transform.GetComponent<MeshRenderer>();
+        if(meshRenderer == null) {
+            gameObject.AddComponent<MeshRenderer>();
+        }
+
+        /* Ensure there is an empty mesh in the mesh filter */
+        Mesh mesh = meshFilter.sharedMesh;
+        if(mesh == null) {
+            meshFilter.mesh = new Mesh();
+            mesh = meshFilter.sharedMesh;
+        }
+        mesh.Clear();
+    }
+
+
+    /* -------- Helper Functions -------------------------------------------------------------------- */
+    
+    public Vector3[] GetHemisphereSpoints(int pointCount, float radius) {
+        /*
+         * Return a vector array that contains points forming a hemisphere using the given parameters.
+         * The returned points form a hemisphere around (0, 0, 0), split along the Y and X plane.
+         * The hemisphere resides on the positive Z side.
+         * 
+         * pointCount = How many points form the outer circle of the hemisphere. 
+         * radius = The radius of the sphere. A negative value will put the hemisphere on the opposite side of the plane.
+         */
+        Vector3[] hemispherePoints = new Vector3[pointCount+1];
+        float currentAngle;
+
+        for(int i = 0; i < pointCount; i++) {
+            currentAngle = ((float) i/pointCount) *Mathf.PI*2;
+            hemispherePoints[i] = new Vector3(radius*Mathf.Cos(currentAngle), radius*Mathf.Sin(currentAngle), radius);
+        }
+        /* Make the last point the tip of the hemisphere */
+        hemispherePoints[pointCount] = new Vector3(0, 0, 0);
+
+        return hemispherePoints;
+    }
+
 }
