@@ -45,6 +45,10 @@ public class LaserGun : ShipWeapon {
     /* The material of the laser's mesh */
     private Material laserMaterial;
 
+    /* How many points will be used to define the base of the cones on the laser's end */
+    private int circlePointCount;
+    
+
 
     /* -------- Built-in Unity Functions ------------------------------------------------------- */
 
@@ -59,9 +63,13 @@ public class LaserGun : ShipWeapon {
 
         /* Set up the mesh filter and renderer for the laser beam */
         ResetMesh();
+        
+        /* Calculate how many points will be used to define the base of the cones on the laser's ends */
+        circlePointCount = 20;
 
-        /* Create the mesh that is used at the start of the laser */
-        CreateLaserMesh();
+        /* Create the mesh of the laser beam and assign it's triangles */
+        UpdateLaserMesh();
+        SetLaserMeshTriangles();
 
         laserBeam = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         laserBeam.transform.parent = transform;
@@ -87,9 +95,9 @@ public class LaserGun : ShipWeapon {
 
         /* Update the size of the laser to reflect any changes */
         UpdateLaserSize();
-        
-        /* Update the mesh of the laser. This needs to be changed to UpdateLaserMesh instead of the create one */
-        CreateLaserMesh();
+
+        /* Update the mesh of the laser for this frame */
+        UpdateLaserMesh();
     }
 
 
@@ -140,21 +148,21 @@ public class LaserGun : ShipWeapon {
          * If the collider hit has a SpaceObject attached to their parent, run it's HitByLaser() function.
          */
         float sphereRadius = GetLaserWidth();
-        float laserLength = GetLaserLength() - sphereRadius*2f;
+        float laserLength = GetLaserLength();
         RaycastHit laserHitInfo;
 
         /* The direction the laser is heading */
         Vector3 laserDirection = transform.forward;
 
-        /* Place the center of the sphere so that the it's center is a radius from the firing point */
-        Vector3 sphereCenter = transform.position + laserDirection*sphereRadius;
+        /* Place the center of the sphere where the weapon's firing point is */
+        Vector3 sphereCenter = transform.position;
 
         /* Check if the laser collides with any space objects */
-        if(Physics.SphereCast(sphereCenter, sphereRadius, laserDirection, out laserHitInfo, laserLength)) {
+        if(Physics.SphereCast(sphereCenter, sphereRadius, laserDirection, out laserHitInfo, laserLength - sphereRadius)) {
             SpaceObject hitObject = laserHitInfo.collider.transform.GetComponent<SpaceObject>();
 
             /* Stop the laser at the collision point */
-            currentLaserLength = laserHitInfo.distance + sphereRadius*2f;
+            currentLaserLength = laserHitInfo.distance;
             laserCollision = true;
 
             /* Place the laser hit particle emitter at the hit point and emit a burst of particles */
@@ -177,8 +185,8 @@ public class LaserGun : ShipWeapon {
     }
 
 
-    /* -------- Event Functions -------------------------------------------------------------------- */
-
+    /* -------- Update Functions -------------------------------------------------------------------- */
+    
     public void UpdateLaserPower(float time) {
         /*
          * Update the current power of the laser. Depending on the active state of the laser, change it's power.
@@ -201,6 +209,66 @@ public class LaserGun : ShipWeapon {
         }
     }
 
+    public void UpdateLaserMesh() {
+        /*
+         * Create a mesh used as the laser beam. It's comprised of two cones on both ends of the laser.
+         * Connecting both cones forms the body of the laser. The circle that forms the body and the 
+         * base of the cones has a size and a vertex count relative to the maximum width of the laser.
+         */
+        float circleRadius = GetLaserWidth();
+        float lengthOfLaser = currentLaserLength;
+        Mesh mesh = transform.GetComponent<MeshFilter>().sharedMesh;
+        Vector3[] startingCone;
+        Vector3[] endingCone;
+        Vector3[] laserMeshPoints;
+
+        
+        /* Set the length of the laser's starting cone */
+        float closeConeLength = laserMaxLength*0.01f;
+        if(closeConeLength < 5) {
+            closeConeLength = 5;
+        }
+        if(closeConeLength > currentLaserLength) {
+            closeConeLength = currentLaserLength;
+        }
+
+        /* Set the sizes of the laser's ending cone. If the laser is hitting something, make the cone flat */
+        float endConeLength = 10;
+        if(laserCollision) {
+            endConeLength = 0;
+        }
+
+
+
+        /* Get the points that form the cone protruding from the weapon's local firing point, (0, 0, 0) */
+        startingCone = GetConeSpoints(circlePointCount, circleRadius, closeConeLength);
+
+        /* Derive the points of the cone on the end of the laser using the cone from the start of the laser */
+        endingCone = new Vector3[startingCone.Length];
+        for(int i = 0; i < startingCone.Length-1; i++) {
+            endingCone[i] = startingCone[i] + new Vector3(0, 0, lengthOfLaser - closeConeLength - endConeLength);
+        }
+        endingCone[startingCone.Length-1] = startingCone[startingCone.Length-1] + new Vector3(0, 0, lengthOfLaser);
+
+        /* Combine both array of points */
+        laserMeshPoints = new Vector3[startingCone.Length + endingCone.Length];
+        System.Array.Copy(startingCone, laserMeshPoints, startingCone.Length);
+        System.Array.Copy(endingCone, 0, laserMeshPoints, startingCone.Length, endingCone.Length);
+
+        /* Assign the points to the mesh */
+        mesh.vertices = laserMeshPoints;
+
+        /* Optimize and calculate the needed values for the mesh to be complete */
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        mesh.Optimize();
+        mesh.name = "Laser Beam";
+        transform.GetComponent<MeshRenderer>().material = laserMaterial;
+    }
+
+
+    /* -------- Event Functions -------------------------------------------------------------------- */
+    
     public void IncreaseLaserPower(float time) {
         /*
          * Increase the power of the laser and prevent it from going above it's max
@@ -312,42 +380,46 @@ public class LaserGun : ShipWeapon {
         //Emit the particles
         laserHitParticles.Emit((int) laserDamage);
     }
-
     
-    public void CreateLaserMesh() {
+    public void ResetMesh() {
         /*
-         * Create a mesh used as the laser beam. It's comprised of two cones on both ends of the laser.
-         * Connecting both cones forms the body of the laser. The circle that forms the body and the 
-         * base of the cones has a size and a vertex count relative to the maximum width of the laser.
-         * circlePointCount is how many points are used to draw the circle base of the cone on either ends.
+         * Reset the mesh renderer and mesh filter on the gameObject so 
+         * it can be used to draw dthe laser beam fired by the weapon.
          */
-        int circlePointCount = 20;
-        float circleRadius = 3*GetLaserWidth()/2f;
-        float lengthOfLaser = currentLaserLength;
-        Mesh mesh = transform.GetComponent<MeshFilter>().sharedMesh;
-        Vector3[] startingCone;
-        Vector3[] endingCone;
-        Vector3[] laserMeshPoints;
 
-        /* Get the points that form the cone protruding from the weapon's local firing point, (0, 0, 0) */
-        startingCone = GetHemisphereSpoints(circlePointCount, circleRadius);
-
-        /* Derive the points of the cone on the end of the laser using the cone from the start of the laser */
-        endingCone = new Vector3[startingCone.Length];
-        for(int i = 0; i < startingCone.Length-1; i++) {
-            endingCone[i] = startingCone[i] + new Vector3(0, 0, lengthOfLaser);
+        /* Add an empty mesh filter that will hold the hemisphere */
+        MeshFilter meshFilter = transform.GetComponent<MeshFilter>();
+        if(meshFilter == null) {
+            meshFilter = gameObject.AddComponent<MeshFilter>();
         }
-        endingCone[startingCone.Length-1] = startingCone[startingCone.Length-1] + new Vector3(0, 0, (lengthOfLaser+circleRadius*2));
+        else {
+            meshFilter.mesh = null;
+        }
 
-        /* Combine both array of points */
-        laserMeshPoints = new Vector3[startingCone.Length + endingCone.Length];
-        System.Array.Copy(startingCone, laserMeshPoints, startingCone.Length);
-        System.Array.Copy(endingCone, 0, laserMeshPoints, startingCone.Length, endingCone.Length);
-        
+        /* Make sure a mesh renderer is active */
+        MeshRenderer meshRenderer = transform.GetComponent<MeshRenderer>();
+        if(meshRenderer == null) {
+            gameObject.AddComponent<MeshRenderer>();
+        }
+
+        /* Ensure there is an empty mesh in the mesh filter */
+        Mesh mesh = meshFilter.sharedMesh;
+        if(mesh == null) {
+            meshFilter.mesh = new Mesh();
+            mesh = meshFilter.sharedMesh;
+        }
+        mesh.Clear();
+    }
+    
+    public void SetLaserMeshTriangles() {
+        /*
+         * Set the triangles that define the polygons that form the mesh of the laser
+         */
+        Mesh mesh = transform.GetComponent<MeshFilter>().sharedMesh;
 
         /* Get a count of all the polygons needed to draw the laser and use an array to track each polygon */
         int coneTrigCount = (circlePointCount+1)*3;
-        int connectingConesTrigCount = (startingCone.Length-1)*6;
+        int connectingConesTrigCount = (circlePointCount+1)*6;
         int[] triangles = new int[coneTrigCount*2 + connectingConesTrigCount];
 
 
@@ -389,66 +461,28 @@ public class LaserGun : ShipWeapon {
         triangles[triangles.Length - 2] = (circlePointCount-1);
         triangles[triangles.Length - 1] = 0;
 
-        /* Assign the points and the polygons to the mesh */
-        mesh.vertices = laserMeshPoints;
+        /* Assign the polygons to the mesh */
         mesh.triangles = triangles;
-
-        /* Optimize and calculate the needed values for the mesh to be complete */
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        mesh.Optimize();
-        mesh.name = "Laser Beam";
-        transform.GetComponent<MeshRenderer>().material = laserMaterial;
-    }
-    
-    public void ResetMesh() {
-        /*
-         * Reset the mesh renderer and mesh filter on the gameObject so 
-         * it can be used to draw dthe laser beam fired by the weapon.
-         */
-
-        /* Add an empty mesh filter that will hold the hemisphere */
-        MeshFilter meshFilter = transform.GetComponent<MeshFilter>();
-        if(meshFilter == null) {
-            meshFilter = gameObject.AddComponent<MeshFilter>();
-        }
-        else {
-            meshFilter.mesh = null;
-        }
-
-        /* Make sure a mesh renderer is active */
-        MeshRenderer meshRenderer = transform.GetComponent<MeshRenderer>();
-        if(meshRenderer == null) {
-            gameObject.AddComponent<MeshRenderer>();
-        }
-
-        /* Ensure there is an empty mesh in the mesh filter */
-        Mesh mesh = meshFilter.sharedMesh;
-        if(mesh == null) {
-            meshFilter.mesh = new Mesh();
-            mesh = meshFilter.sharedMesh;
-        }
-        mesh.Clear();
     }
 
 
     /* -------- Helper Functions -------------------------------------------------------------------- */
-    
-    public Vector3[] GetHemisphereSpoints(int pointCount, float radius) {
+
+    public Vector3[] GetConeSpoints(int pointCount, float radius, float length) {
         /*
-         * Return a vector array that contains points forming a hemisphere using the given parameters.
-         * The returned points form a hemisphere around (0, 0, 0), split along the Y and X plane.
-         * The hemisphere resides on the positive Z side.
+         * Return a vector array that contains points forming a cone using the given parameters.
+         * The returned points form a cone with a tip at (0, 0, 0) that extends in the positive Z axis.
          * 
-         * pointCount = How many points form the outer circle of the hemisphere. 
-         * radius = The radius of the sphere. A negative value will put the hemisphere on the opposite side of the plane.
+         * pointCount = How many points form the base circle of the cone. 
+         * radius = The radius of the cone's base.
+         * length = How far the tip of the cone is from the base.
          */
         Vector3[] hemispherePoints = new Vector3[pointCount+1];
         float currentAngle;
 
         for(int i = 0; i < pointCount; i++) {
             currentAngle = ((float) i/pointCount) *Mathf.PI*2;
-            hemispherePoints[i] = new Vector3(radius*Mathf.Cos(currentAngle), radius*Mathf.Sin(currentAngle), radius);
+            hemispherePoints[i] = new Vector3(radius*Mathf.Cos(currentAngle), radius*Mathf.Sin(currentAngle), length);
         }
         /* Make the last point the tip of the hemisphere */
         hemispherePoints[pointCount] = new Vector3(0, 0, 0);
